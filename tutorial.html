@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>豆瓣一键拉黑 · 安装使用教程</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&family=Noto+Sans+SC:wght@400;500&display=swap');
+
+  :root {
+    --green: #3d7a4a;
+    --green-light: #eef5f0;
+    --orange: #e86b47;
+    --orange-light: #fdf1ee;
+    --gray: #f5f4f0;
+    --text: #1a1a1a;
+    --text-muted: #6b6b6b;
+    --border: #e0ddd6;
+    --radius: 10px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Noto Sans SC', sans-serif;
+    background: #faf9f6;
+    color: var(--text);
+    font-size: 15px;
+    line-height: 1.8;
+  }
+
+  /* 顶部标题区 */
+  header {
+    background: var(--green);
+    color: #fff;
+    padding: 48px 24px 36px;
+    text-align: center;
+  }
+  header h1 {
+    font-family: 'Noto Serif SC', serif;
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: .04em;
+    margin-bottom: 8px;
+  }
+  header p {
+    font-size: 14px;
+    opacity: .8;
+  }
+
+  /* 主体 */
+  main {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 40px 20px 80px;
+  }
+
+  /* 章节 */
+  section {
+    margin-bottom: 52px;
+  }
+
+  .section-title {
+    font-family: 'Noto Serif SC', serif;
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--green);
+    border-left: 4px solid var(--green);
+    padding-left: 12px;
+    margin-bottom: 20px;
+  }
+
+  /* 步骤块 */
+  .step {
+    margin-bottom: 28px;
+  }
+  .step-num {
+    display: inline;
+    font-weight: 700;
+    color: var(--green);
+    margin-right: 4px;
+  }
+  .step-body p {
+    margin-bottom: 10px;
+    color: var(--text);
+  }
+
+  /* 截图 */
+  .screenshot {
+    width: 100%;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    margin: 12px 0 4px;
+    display: block;
+    box-shadow: 0 2px 12px rgba(0,0,0,.07);
+  }
+  .caption {
+    font-size: 12px;
+    color: var(--text-muted);
+    text-align: center;
+    margin-bottom: 4px;
+  }
+
+  /* 提示框 */
+  .tip {
+    background: var(--green-light);
+    border-left: 3px solid var(--green);
+    border-radius: 0 var(--radius) var(--radius) 0;
+    padding: 12px 16px;
+    font-size: 14px;
+    color: #2d5c38;
+    margin: 12px 0;
+  }
+  .warn {
+    background: var(--orange-light);
+    border-left: 3px solid var(--orange);
+    border-radius: 0 var(--radius) var(--radius) 0;
+    padding: 12px 16px;
+    font-size: 14px;
+    color: #8a3a20;
+    margin: 12px 0;
+  }
+
+  /* 功能卡片 */
+  .cards {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+  @media (max-width: 500px) { .cards { grid-template-columns: 1fr; } }
+  .card {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+  }
+  .card-icon { font-size: 20px; margin-bottom: 6px; }
+  .card-title { font-weight: 600; font-size: 14px; margin-bottom: 4px; }
+  .card-desc { font-size: 13px; color: var(--text-muted); line-height: 1.6; }
+
+  /* 安装方式标签 */
+  .method {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    margin-bottom: 28px;
+  }
+  .method-header {
+    background: var(--gray);
+    padding: 12px 16px;
+    font-weight: 600;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  .method-body { padding: 16px; }
+
+  /* 按钮样式展示 */
+  .btn-demo {
+    display: inline-block;
+    background: var(--orange);
+    color: #fff;
+    border-radius: 4px;
+    padding: 3px 10px;
+    font-size: 13px;
+    font-weight: 500;
+  }
+  .btn-demo-green {
+    display: inline-block;
+    background: #4a944a;
+    color: #fff;
+    border-radius: 4px;
+    padding: 3px 10px;
+    font-size: 13px;
+    font-weight: 500;
+  }
+
+  /* 分隔线 */
+  hr {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 40px 0;
+  }
+
+  code {
+    background: var(--gray);
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-size: 13px;
+    font-family: monospace;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🚫 豆瓣一键拉黑 · 使用教程</h1>
+  <p>对电脑不熟悉也能看懂的版本</p>
+</header>
+
+<main>
+
+  <!-- 安装方法 -->
+  <section>
+    <div class="section-title">安装方法（二选一）</div>
+
+    <div class="method">
+      <div class="method-header">
+        <span>方法一：油猴脚本（推荐，更新方便）</span>
+      </div>
+      <div class="method-body">
+        <div class="step"><div class="step-body"><p><span class="step-num">1</span>先安装 <strong>Tampermonkey</strong> 油猴插件。去 Chrome 或 Edge 的扩展商店搜索「Tampermonkey」安装就行，就像装普通插件一样。</p>
+          </div>
+        </div>
+        <div class="step"><div class="step-body"><p><span class="step-num">2</span>去 Greasy Fork 页面点「<strong>安装此脚本</strong>」，油猴会自动弹出安装确认页，点确认就装好了。</p>
+            <img src="截屏2026-04-07_15_41_00.png" class="screenshot" alt="Greasy Fork 安装页面">
+            <div class="caption">Greasy Fork 页面，点绿色「安装此脚本」按钮</div>
+          </div>
+        </div>
+        <div class="tip">以后插件有更新，油猴会自动提示你，不用手动操作。</div>
+      </div>
+    </div>
+
+    <div class="method">
+      <div class="method-header">
+        <span>方法二：手动加载扩展（Chrome / Edge 通用）</span>
+      </div>
+      <div class="method-body">
+        <div class="step"><div class="step-body"><p><span class="step-num">1</span>下载 <code>douban-blacklist-ext.zip</code>，解压到一个你记得住的地方（比如桌面）。<strong>解压后的文件夹不要删也不要移动</strong>，删了插件就失效了。</p>
+          </div>
+        </div>
+        <div class="step"><div class="step-body"><p><span class="step-num">2</span>在浏览器地址栏输入 <code>chrome://extensions</code>（Chrome）或 <code>edge://extensions</code>（Edge），回车进入扩展管理页面。打开右上角的<strong>开发者模式</strong>。</p>
+            <img src="截屏2026-04-07_16_32_40.png" class="screenshot" alt="开启开发者模式">
+            <div class="caption">右上角打开「开发者模式」</div>
+          </div>
+        </div>
+        <div class="step"><div class="step-body"><p><span class="step-num">3</span>点「<strong>加载未打包的扩展程序</strong>」，在弹出的文件夹选择窗口里，找到并选中解压出来的 <code>douban-blacklist-ext</code> 文件夹，点「选择」。</p>
+            <img src="截屏2026-04-07_16_33_32.png" class="screenshot" alt="选择文件夹">
+            <div class="caption">选中 douban-blacklist-ext 文件夹后点「选择」</div>
+          </div>
+        </div>
+        <div class="warn">Chrome 可能每次启动都会弹一个「停用开发者模式扩展」的提示，关掉就行，不影响使用。Edge 没有这个问题。</div>
+      </div>
+    </div>
+  </section>
+
+  <hr>
+
+  <!-- 使用方法 -->
+  <section>
+    <div class="section-title">怎么用</div>
+
+    <p style="margin-bottom:20px;color:var(--text-muted);font-size:14px">安装好之后刷新豆瓣页面，插件会自动识别你在哪个页面，然后在合适的位置出现一个 <span class="btn-demo">🚫 按钮</span>，点一下就开始运行。</p>
+
+    <div class="step"><div class="step-body"><p><span class="step-num">①</span><strong>拉黑评论者</strong>：打开帖子，默认就是评论页，右侧会出现按钮。点击后按钮变成「处理评论 xx/90」，等它跑完就行。</p>
+        <img src="截屏2026-04-07_14_28_59.png" class="screenshot" alt="拉黑评论者运行中">
+        <div class="caption">正在处理，显示当前进度</div>
+        <img src="截屏2026-04-07_14_33_24.png" class="screenshot" alt="拉黑完成">
+        <div class="caption">🎉 完成！拉黑 90 人</div>
+      </div>
+    </div>
+
+    <div class="step"><div class="step-body"><p><span class="step-num">②</span><strong>拉黑点赞的人</strong>：在帖子页面点「赞」这个 tab，切换过去就会出现按钮。</p>
+        <img src="截屏2026-04-07_14_34_10.png" class="screenshot" alt="点赞页按钮">
+        <div class="caption">切到「赞」tab，右上角出现按钮</div>
+      </div>
+    </div>
+
+    <div class="step"><div class="step-body"><p><span class="step-num">③</span><strong>拉黑转发的人</strong>：在帖子页面点「转发」tab，同样会出现按钮。</p>
+        <img src="截屏2026-04-07_14_38_53.png" class="screenshot" alt="转发页按钮">
+        <div class="caption">切到「转发」tab，右上角出现按钮</div>
+      </div>
+    </div>
+
+    <div class="step"><div class="step-body"><p><span class="step-num">④</span><strong>拉黑小组所有成员</strong>：进入小组 → 点「成员」→ 页面顶部会出现按钮。</p>
+        <img src="截屏2026-04-07_14_49_56.png" class="screenshot" alt="小组成员页按钮">
+        <div class="caption">小组成员管理页，标题旁边出现按钮</div>
+      </div>
+    </div>
+
+    <div class="step"><div class="step-body"><p><span class="step-num">⑤</span><strong>大赦天下（解除所有拉黑）</strong>：进入 <code>douban.com/contacts/blacklist</code> 黑名单页面，右侧会出现一个绿色按钮，点一下自动解除所有人。</p>
+        <img src="截屏2026-04-07_14_25_39.png" class="screenshot" alt="大赦天下按钮">
+        <div class="caption">黑名单页面右侧，绿色「☀️ 大赦天下」按钮</div>
+      </div>
+    </div>
+  </section>
+
+  <hr>
+
+  <!-- 常见问题 -->
+  <section>
+    <div class="section-title">常见问题</div>
+
+    <div class="step"><div class="step-body"><p><span class="step-num">?</span><strong>按钮没出现怎么办？</strong><br>刷新一下页面，等页面完全加载完再看。如果还没有，检查一下插件有没有装好、有没有开启。</p>
+      </div>
+    </div>
+
+    <div class="step"><div class="step-body"><p><span class="step-num">?</span><strong>跑到一半卡住了？</strong><br>可能触发了豆瓣的验证码，页面某个地方会有验证码弹窗，手动完成之后重新点按钮继续。</p>
+      </div>
+    </div>
+
+    <div class="step"><div class="step-body"><p><span class="step-num">?</span><strong>拉黑会通知对方吗？</strong><br>不会，豆瓣拉黑是静默的，对方不知道。</p>
+      </div>
+    </div>
+
+    <div class="step"><div class="step-body"><p><span class="step-num">?</span><strong>会不会被封号？</strong><br>脚本设置了随机延迟模拟人工操作，正常使用风险不大，但批量操作几百人之后建议休息一下再继续。</p>
+        <div class="tip">每拉黑一个人会随机等 2~4 秒，看起来好像卡住了，其实是正常的，是为了不被豆瓣检测到。</div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+</body>
+</html>
