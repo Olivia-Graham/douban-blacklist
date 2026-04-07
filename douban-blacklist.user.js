@@ -2,7 +2,7 @@
 // @name         豆瓣一键拉黑增强版（含大赦天下）
 // @namespace    https://github.com/user/douban-blacklist
 // @version      2.1.0
-// @description  在豆贴子的评论、点赞、转发页面及小组成员页面一键拉黑；在黑名单页面一键解除所有拉黑
+// @description  在豆瓣贴子的评论、点赞、转发页面及小组成员页面一键拉黑；在黑名单页面一键解除所有拉黑
 // @author       user
 // @license      GPL 3.0
 // @match        https://www.douban.com/**
