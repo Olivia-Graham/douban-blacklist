@@ -5,7 +5,7 @@
 // @description  在豆瓣贴子的评论、点赞、转发页面及小组成员页面一键拉黑；在黑名单页面一键解除所有拉黑
 // @author       user
 // @license      GPL 3.0
-// @match        https://www.douban.com/**
+// @match        *://*.douban.com/*
 // @grant        none
 // ==/UserScript==
 
