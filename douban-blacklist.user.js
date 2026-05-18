@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         豆瓣小组一键拉黑
 // @namespace    https://github.com/Olivia-Graham/douban-blacklist
-// @version      2.1.0
+// @version      2.2.0
 // @description  在豆瓣贴子的评论、点赞、转发页面及小组成员页面一键拉黑；在黑名单页面一键解除所有拉黑
 // @author       user
 // @license      GPL 3.0
@@ -35,21 +35,63 @@
             || "";
     }
 
-    async function getRealUserId(href) {
-        let slug = href.replace(/\/$/, "").split('/').pop();
-        if (/^\d{5,}$/.test(slug)) return slug;
+    /**
+     * 访问用户主页，获取真实的数字 ID，并精准检测是否为“已关注”用户
+     */
+    async function checkUser(href, knownId = null) {
+        let id = knownId;
+        if (!id && href) {
+            let m = href.match(/people\/([^/]+)/);
+            if (m) id = m[1];
+        }
+
+        let isFollowed = false;
+        let isCaptcha = false;
+
+        // 格式化主页 URL
+        let profileUrl = href;
+        if (!profileUrl) {
+            if (id) profileUrl = `https://www.douban.com/people/${id}/`;
+            else return { id: null, isFollowed: false };
+        } else if (profileUrl.startsWith('/')) {
+            profileUrl = window.location.origin + profileUrl;
+        }
+
         try {
-            let text = await fetch(href).then(r => r.text());
-            let m = text.match(/id["']?:\s*["']?(\d{5,})["']?/)
-                 || text.match(/douban_id\s*=\s*['"](\d+)['"]/)
-                 || text.match(/people\/(\d+)\//);
-            return m ? m[1] : null;
-        } catch { return null; }
+            // 【核心修复】：必须带上 credentials: 'include'
+            // 否则豆瓣会认为这是未登录的游客访问，永远看不到“已关注”按钮
+            let res = await fetch(profileUrl, { credentials: 'include' });
+            let text = await res.text();
+
+            // 检查是否因为请求过快触发了验证码
+            if (text.includes('sec.douban.com') || res.url.includes('sec.douban.com')) {
+                return { id, isFollowed: false, captcha: true };
+            }
+
+            // 1. 提取真实数字 ID（如果传进来的只是用户的英文名/个性后缀）
+            if (!knownId) {
+                let m = text.match(/id["']?:\s*["']?(\d{5,})["']?/)
+                     || text.match(/douban_id\s*=\s*['"](\d+)['"]/);
+                if (m) id = m[1];
+            }
+
+            // 2. 精准匹配关注状态的 UI 特征
+            // 匹配类名包含 j-contact-remove、直接出现 >取消关注< 或者 class="user-cs" 的已关注字样
+            const followedRegex = /class="[^"]*j-contact-remove[^"]*"|>取消关注<|user-cs[^>]*>\s*(已关注|互相关注)\s*</;
+            if (followedRegex.test(text)) {
+                isFollowed = true;
+            }
+
+        } catch (e) {
+            console.error('[豆瓣拉黑] 检查关注状态失败:', profileUrl, e);
+        }
+
+        return { id, isFollowed, isCaptcha };
     }
 
     async function postBan(realId, ck) {
         try {
-            let res  = await fetch(URL_BAN, {
+            let res = await fetch(URL_BAN, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/x-www-form-urlencoded",
@@ -92,7 +134,6 @@
     }
 
     // ===================== 核心批量拉黑 =====================
-    // 先去重再遍历，计数器用去重后的下标，不会跳跃
     async function banItems(items, ck, btn, pageLabel) {
         let seen = new Set(), deduped = [];
         for (let item of items) {
@@ -103,11 +144,35 @@
         let success = 0;
         for (let i = 0; i < deduped.length; i++) {
             let { href, id, name } = deduped[i];
-            btn.textContent = `${pageLabel} ${i + 1}/${deduped.length}: ${name || ''}`;
-
-            let realId = id || await getRealUserId(href);
+            
+            // 阶段 1：先检查用户信息与关注状态
+            btn.textContent = `${pageLabel} ${i + 1}/${deduped.length}: 正在检查 ${name || ''}...`;
+            
+            let userInfo = await checkUser(href || `https://www.douban.com/people/${id}/`, id);
+            
+            if (userInfo.captcha) {
+                return -1; // 触发了验证码拦截
+            }
+            
+            let realId = userInfo.id;
             if (!realId) { console.warn('[豆瓣拉黑] 无法解析 ID:', href); continue; }
 
+            // 遇到已关注用户，触发弹窗拦截
+            if (userInfo.isFollowed) {
+                let confirmMsg = `⚠️ 发现用户【${name || realId}】在您的关注列表中！\n\n点击【确定】：继续强制拉黑（将会自动取关）\n点击【取消】：跳过该用户`;
+                if (!window.confirm(confirmMsg)) {
+                    console.log(`⏩ 跳过已关注用户: ${name || realId}`);
+                    btn.textContent = `⏩ 已跳过 ${name || realId}`;
+                    await sleep(800);
+                    continue; 
+                }
+            }
+
+            // 稍微停顿一下，防止由于连续发送 checkUser 和 postBan 导致请求过于频繁
+            await sleep(300);
+
+            // 阶段 2：执行拉黑
+            btn.textContent = `${pageLabel} ${i + 1}/${deduped.length}: 拉黑 ${name || ''}`;
             let r = await postBan(realId, ck);
             if      (r === 'ok')      { success++; console.log(`✅ 拉黑成功: ${name}`); }
             else if (r === 'dup')     { console.log(`🆗 已在黑名单: ${name}`); }
@@ -131,7 +196,7 @@
 
             let r = await banItems(items, ck, btn, `第${p}页`);
             if (r === -1) {
-                alert('⚠️ 触发验证码！脚本已暂停，请手动验证后重新点击按钮。');
+                alert('⚠️ 触发豆瓣验证码机制！在访问用户主页或尝试拉黑时被拦截。\n\n脚本已暂停，请您手动刷新页面，完成一次操作输入验证码后，再重新点击按钮。');
                 btn.textContent = '⚠️ 验证码中断';
                 return;
             }
@@ -158,7 +223,6 @@
 
     // ===================== 各场景取用户列表 =====================
 
-    // 广播/日志 评论
     function commentLinks(doc) {
         let result = [], seen = new Set();
         doc.querySelectorAll(
@@ -172,34 +236,24 @@
         return result;
     }
 
-    // 点赞/转发/收藏/赞赏列表页
-    // 核心修复：只取列表 li 里的第一个用户链接，且排除帖子头部区域
     function likeReshareLinks(doc) {
         let result = [], seen = new Set();
-
-        // 头部区域选择器（帖子作者、广播原文作者等），这些区域内的链接一律跳过
         const HEADER_SELS = [
             '.article-title', '.status-saying', '.note-header',
             '.topic-content', '.status-author', '#topic-content',
             '.status-item .status-saying', '.topic-doc'
         ];
-
-        // 找到列表主容器
-        // 豆瓣列表页通常是 #content 下的某个 ul，每个 li 是一个用户条目
         let listEl = doc.querySelector(
             'ul.list-items, ul.listing, .mod-bd > ul, #content > div > ul, #content > ul'
         );
-
         let candidates = listEl
             ? listEl.querySelectorAll('li')
             : doc.querySelectorAll('#content li');
 
         candidates.forEach(li => {
-            // 跳过在头部区域内的 li
             for (let sel of HEADER_SELS) {
                 if (li.closest(sel)) return;
             }
-            // 每个 li 只取第一个 /people/ 链接（头像和名字指向同一人，不重复抓）
             let a = li.querySelector('a[href*="/people/"]');
             if (!a) return;
             let href = (a.href || '').split('?')[0];
@@ -211,7 +265,6 @@
         return result;
     }
 
-    // 小组成员页
     function memberLinks(doc) {
         let result = [], seen = new Set();
         doc.querySelectorAll(
@@ -225,7 +278,7 @@
         return result;
     }
 
-    // ===================== 小组帖子评论（ID 在 operation-div.id） =====================
+    // ===================== 小组帖子评论 =====================
     async function banGroupComments(btn) {
         let ck = getCK();
         if (!ck) { alert('❌ 无法获取 ck'); return; }
@@ -236,19 +289,46 @@
             let id = div.id;
             if (!/^\d{5,}$/.test(id) || seen.has(id)) return;
             seen.add(id);
-            let nameEl = div.closest('.reply-item, .comment-item, li')
-                           ?.querySelector('a[href*="/people/"]');
-            items.push({ id, name: nameEl?.textContent.trim() || id });
+            
+            // 精确抓取用户链接
+            let nameEl = div.closest('.reply-item, .comment-item, li')?.querySelector('a[href*="/people/"]');
+            let href = nameEl ? nameEl.href : `https://www.douban.com/people/${id}/`;
+            let name = nameEl?.textContent.trim() || id;
+
+            items.push({ id, name, href });
         });
 
         let total = 0;
         for (let i = 0; i < items.length; i++) {
-            let { id, name } = items[i];
+            let { id, name, href } = items[i];
+            
+            // 加入检查环节
+            btn.textContent = `正在检查 ${i + 1}/${items.length}: ${name}...`;
+            let userInfo = await checkUser(href, id);
+
+            if (userInfo.captcha) {
+                alert('⚠️ 触发豆瓣验证码！在访问用户主页时被拦截，脚本已暂停。');
+                btn.textContent = '⚠️ 验证码中断';
+                return;
+            }
+
+            if (userInfo.isFollowed) {
+                let confirmMsg = `⚠️ 发现用户【${name}】在您的关注列表中！\n\n点击【确定】：继续强制拉黑\n点击【取消】：跳过该用户`;
+                if (!window.confirm(confirmMsg)) {
+                    console.log(`⏩ 跳过已关注用户: ${name}`);
+                    btn.textContent = `⏩ 已跳过 ${name}`;
+                    await sleep(800);
+                    continue;
+                }
+            }
+
+            await sleep(300);
+
             btn.textContent = `处理评论 ${i + 1}/${items.length}: ${name}`;
             let r = await postBan(id, ck);
             if (r === 'ok') { total++; console.log(`✅ 拉黑: ${name}`); }
             else if (r === 'captcha') {
-                alert('⚠️ 触发验证码！脚本已暂停。');
+                alert('⚠️ 触发验证码！尝试拉黑时被拦截。');
                 btn.textContent = '⚠️ 验证码中断';
                 return;
             }
@@ -258,40 +338,6 @@
     }
 
     // ===================== 大赦天下 =====================
-    // 豆瓣解除拉黑：GET /contacts/blacklist?remove=用户slug&ck=xxx
-    // remove 参数可以是纯数字 ID 也可以是字母 slug，直接用不需要转换
-
-    // 滚动到页面底部，触发懒加载
-    async function scrollToBottom() {
-        return new Promise(resolve => {
-            let last = 0;
-            let timer = setInterval(() => {
-                window.scrollTo(0, document.body.scrollHeight);
-                if (document.body.scrollHeight === last) {
-                    clearInterval(timer);
-                    window.scrollTo(0, 0);
-                    resolve();
-                }
-                last = document.body.scrollHeight;
-            }, 400);
-        });
-    }
-
-    // 从 document 中收集所有 remove 链接（slug 可以是字母或数字）
-    function collectRemoveItems(doc) {
-        let items = [], seen = new Set();
-        doc.querySelectorAll('a[href*="remove="]').forEach(a => {
-            let m = a.href.match(/remove=([^&]+)/);
-            if (!m || seen.has(m[1])) return;
-            seen.add(m[1]);
-            let container = a.closest('li, .item, .gact-item, div');
-            let nameA = container?.querySelector('a[href*="/people/"]');
-            let name = nameA?.textContent.trim() || ('用户' + m[1]);
-            items.push({ slug: m[1], name });
-        });
-        return items;
-    }
-
     async function amnesty(btn) {
         let ck = getCK();
         if (!ck) { alert('❌ 无法获取 ck'); return; }
@@ -300,28 +346,27 @@
         let total = 0, currentDoc = document;
 
         for (let p = 1; p <= MAX_PAGES; p++) {
-            // 第一页先滚动到底部，确保懒加载的条目全部渲染出来
-            if (p === 1) {
-                btn.textContent = '⏳ 滚动页面加载全部数据…';
-                await scrollToBottom();
-                await sleep(600);
-            }
-
-            let items = collectRemoveItems(currentDoc);
+            let items = [], seen = new Set();
+            currentDoc.querySelectorAll('a[href*="remove="]').forEach(a => {
+                let m = a.href.match(/remove=(\d+)/);
+                if (!m || seen.has(m[1])) return;
+                seen.add(m[1]);
+                let li = a.closest('li, .item, .gact-item')?.parentElement;
+                let nameA = li?.querySelector('a[href*="/people/"]');
+                items.push({ id: m[1], name: nameA?.textContent.trim() || m[1] });
+            });
 
             if (!items.length) {
                 btn.textContent = `✅ 第${p}页无黑名单，结束（共解除 ${total} 人）`;
                 break;
             }
 
-            console.log(`[大赦天下] 第${p}页 ${items.length} 人`);
-
             for (let i = 0; i < items.length; i++) {
-                let { slug, name } = items[i];
+                let { id, name } = items[i];
                 btn.textContent = `第${p}页 解除 ${i + 1}/${items.length}: ${name}`;
                 try {
                     await fetch(
-                        `https://www.douban.com/contacts/blacklist?remove=${slug}&ck=${ck}`,
+                        `https://www.douban.com/contacts/blacklist?remove=${id}&ck=${ck}`,
                         { credentials: 'include' }
                     );
                     total++;
@@ -332,7 +377,6 @@
                 await sleep(rand());
             }
 
-            // 翻页
             let nextUrl = getNextUrl(currentDoc);
             if (nextUrl && p < MAX_PAGES) {
                 btn.textContent = `⏳ 第${p}页完成，加载下一页…`;
@@ -365,7 +409,7 @@
         let path   = window.location.pathname;
         let search = window.location.search + window.location.hash;
 
-        // -------- 大赦天下 --------
+        // 大赦天下
         if (path.includes('/contacts/blacklist')) {
             setTimeout(() => {
                 if (document.querySelector('.db-bl-btn')) return;
@@ -378,7 +422,7 @@
             return;
         }
 
-        // -------- 小组成员页 --------
+        // 小组成员页
         if (/\/group\/[^\/]+\/members/.test(path)) {
             setTimeout(() => {
                 if (document.querySelector('.db-bl-btn')) return;
@@ -391,7 +435,7 @@
             return;
         }
 
-        // -------- 帖子 / 广播 / 日志 --------
+        // 帖子 / 广播 / 日志
         const isStatus = /\/people\/[^\/]+\/status\/\d+/.test(path);
         const isNote   = /\/note\/\d+/.test(path);
         const isGroup  = /\/group\/topic\/\d+/.test(path);
@@ -435,7 +479,6 @@
                 btn.style.float = 'right';
                 if (!tabs.querySelector('.db-bl-btn')) tabs.appendChild(btn);
             } else {
-                // 小组帖子没有 tabs，插到标题后
                 tryInsert(btn,
                     ['.topic-content h1', '#wrapper h1', '.article-title',
                      '#content h1', '#content h2', '#content'],
