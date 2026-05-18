@@ -337,8 +337,7 @@
         btn.textContent = `🎉 完成！拉黑 ${total} 人`;
     }
 
-    // ===================== 大赦天下 =====================
-    // ===================== 大赦天下 =====================
+   // ===================== 大赦天下 =====================
     async function amnesty(btn) {
         let ck = getCK();
         if (!ck) { alert('❌ 无法获取 ck'); return; }
@@ -349,7 +348,8 @@
         for (let p = 1; p <= MAX_PAGES; p++) {
             let items = [], seen = new Set();
             currentDoc.querySelectorAll('a[href*="remove="]').forEach(a => {
-                let m = a.href.match(/remove=(\d+)/);
+                // 【核心修复 1】：将 \d+ 改为 [^&'"#]+ ，完美兼容纯数字 ID 和英文字母自定义 ID
+                let m = a.href.match(/remove=([^&'"#]+)/);
                 if (!m || seen.has(m[1])) return;
                 seen.add(m[1]);
                 let li = a.closest('li, .item, .gact-item')?.parentElement;
@@ -357,7 +357,7 @@
                 items.push({ id: m[1], name: nameA?.textContent.trim() || m[1] });
             });
 
-            // 如果当前页面抓不到人了，说明黑名单已经彻底空了
+            // 如果当前页面一个人都抓不到，说明黑名单已经彻底空了
             if (!items.length) {
                 btn.textContent = `✅ 黑名单已清空，结束（共解除 ${total} 人）`;
                 break;
@@ -379,15 +379,19 @@
                 await sleep(rand());
             }
 
-            if (p < MAX_PAGES) {
-                btn.textContent = `⏳ 当前批次完成，正在重新获取黑名单…`;
+            // 【核心修复 2：分页滑移防漏】
+            // 原本有下一页的话，删完当前页，后面的人会自动顶上来
+            let nextUrl = getNextUrl(currentDoc);
+            if (nextUrl && p < MAX_PAGES) {
+                btn.textContent = `⏳ 当前批次完成，正在重新拉取黑名单…`;
                 await sleep(PAGE_SLEEP);
                 try {
-                    // 【核心修复】：不再根据 nextUrl 翻页。
-                    // 直接强制拉取黑名单首页，因为没解除的人会自动补位到第一页。
+                    // 抛弃 nextUrl，永远强制请求第一页，直到一个人都不剩
                     let html = await fetch("https://www.douban.com/contacts/blacklist", { credentials: 'include' }).then(r => r.text());
                     currentDoc = new DOMParser().parseFromString(html, 'text/html');
                 } catch { break; }
+            } else {
+                break;
             }
         }
 
