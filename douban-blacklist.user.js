@@ -338,6 +338,7 @@
     }
 
     // ===================== 大赦天下 =====================
+    // ===================== 大赦天下 =====================
     async function amnesty(btn) {
         let ck = getCK();
         if (!ck) { alert('❌ 无法获取 ck'); return; }
@@ -356,14 +357,15 @@
                 items.push({ id: m[1], name: nameA?.textContent.trim() || m[1] });
             });
 
+            // 如果当前页面抓不到人了，说明黑名单已经彻底空了
             if (!items.length) {
-                btn.textContent = `✅ 第${p}页无黑名单，结束（共解除 ${total} 人）`;
+                btn.textContent = `✅ 黑名单已清空，结束（共解除 ${total} 人）`;
                 break;
             }
 
             for (let i = 0; i < items.length; i++) {
                 let { id, name } = items[i];
-                btn.textContent = `第${p}页 解除 ${i + 1}/${items.length}: ${name}`;
+                btn.textContent = `解除中... 第 ${total + 1} 人: ${name}`;
                 try {
                     await fetch(
                         `https://www.douban.com/contacts/blacklist?remove=${id}&ck=${ck}`,
@@ -377,15 +379,16 @@
                 await sleep(rand());
             }
 
-            let nextUrl = getNextUrl(currentDoc);
-            if (nextUrl && p < MAX_PAGES) {
-                btn.textContent = `⏳ 第${p}页完成，加载下一页…`;
+            if (p < MAX_PAGES) {
+                btn.textContent = `⏳ 当前批次完成，正在重新获取黑名单…`;
                 await sleep(PAGE_SLEEP);
                 try {
-                    let html = await fetch(nextUrl, { credentials: 'include' }).then(r => r.text());
+                    // 【核心修复】：不再根据 nextUrl 翻页。
+                    // 直接强制拉取黑名单首页，因为没解除的人会自动补位到第一页。
+                    let html = await fetch("https://www.douban.com/contacts/blacklist", { credentials: 'include' }).then(r => r.text());
                     currentDoc = new DOMParser().parseFromString(html, 'text/html');
                 } catch { break; }
-            } else { break; }
+            }
         }
 
         btn.textContent = `☀️ 大赦完成！共解除 ${total} 人`;
